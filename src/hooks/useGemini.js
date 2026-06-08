@@ -44,7 +44,11 @@ export function useGemini() {
       let parts
 
       if (inputType === 'youtube') {
-        parts = [{ file_data: { file_uri: youtubeUrl } }, { text: promptText }]
+        parts = [
+          { file_data: { file_uri: youtubeUrl } },
+          { videoMetadata: { startOffset: '0s', endOffset: '10s' } },
+          { text: promptText }
+        ]
       } else {
         const data = await fileToBase64(file)
         parts = [{ inline_data: { mime_type: mimeType, data } }, { text: promptText }]
@@ -73,7 +77,10 @@ export function useGemini() {
         throw new Error('猫が見つかりませんでした。別の写真や動画をお試しください。')
       }
 
-      setResult(parsed)
+      setResult({
+        ...parsed,
+        analyzedDuration: inputType === 'youtube' ? '冒頭10秒' : null
+      })
     } catch (e) {
       setError(e.message)
     } finally {

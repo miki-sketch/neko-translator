@@ -1,6 +1,11 @@
 export default function ResultBubble({ result, profile, onReset }) {
   return (
     <div className="result-area">
+      {result.analyzedDuration && (
+        <div className="analyzed-duration-banner">
+          <span>⏱ {result.analyzedDuration}を解析しました（YouTube節約モード）</span>
+        </div>
+      )}
       {profile?.name && (
         <div className="result-badge">{profile.name}の声 🐾</div>
       )}
