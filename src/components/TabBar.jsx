@@ -1,5 +1,4 @@
 const TABS = [
-  { id: 'photo', label: '写真', icon: '📷' },
   { id: 'video', label: '動画', icon: '🎬' },
   { id: 'audio', label: '音声', icon: '🎙' },
   { id: 'youtube', label: 'YouTube', icon: '▶' },

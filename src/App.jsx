@@ -3,7 +3,6 @@ import { getApiKey, getProfile } from './utils/storage'
 import { useGemini } from './hooks/useGemini'
 import ApiKeySetup from './components/ApiKeySetup'
 import TabBar from './components/TabBar'
-import PhotoTab from './components/PhotoTab'
 import VideoTab from './components/VideoTab'
 import AudioTab from './components/AudioTab'
 import YoutubeTab from './components/YoutubeTab'
@@ -23,7 +22,6 @@ function normalizeMimeType(file) {
   if (overrides[type]) return overrides[type]
   if (type) return type
   const extMap = {
-    jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp',
     mp4: 'video/mp4', mov: 'video/mp4',
     mp3: 'audio/mpeg', m4a: 'audio/mp4', wav: 'audio/wav',
   }
@@ -32,10 +30,9 @@ function normalizeMimeType(file) {
 
 export default function App() {
   const [showApiModal, setShowApiModal] = useState(!getApiKey())
-  const [activeTab, setActiveTab] = useState('photo')
+  const [activeTab, setActiveTab] = useState('video')
   const [profile, setProfile] = useState(getProfile())
 
-  const [photoFile, setPhotoFile] = useState(null)
   const [videoFile, setVideoFile] = useState(null)
   const [audioFile, setAudioFile] = useState(null)
   const [videoDesc, setVideoDesc] = useState('')
@@ -52,9 +49,7 @@ export default function App() {
   }
 
   function handleTranslate() {
-    if (activeTab === 'photo' && photoFile) {
-      translate('photo', { file: photoFile, mimeType: normalizeMimeType(photoFile) }, profile)
-    } else if (activeTab === 'video' && videoFile) {
+    if (activeTab === 'video' && videoFile) {
       translate('video', { file: videoFile, mimeType: normalizeMimeType(videoFile), descText: videoDesc }, profile)
     } else if (activeTab === 'audio' && audioFile) {
       translate('audio', { file: audioFile, mimeType: normalizeMimeType(audioFile), descText: audioDesc }, profile)
@@ -65,7 +60,6 @@ export default function App() {
 
   function canTranslate() {
     if (loading || tabError) return false
-    if (activeTab === 'photo') return !!photoFile
     if (activeTab === 'video') return !!videoFile
     if (activeTab === 'audio') return !!audioFile
     if (activeTab === 'youtube') {
@@ -75,8 +69,8 @@ export default function App() {
     return false
   }
 
-  const showModal = showApiModal || error === 'API_KEY_MISSING' || error === 'API_KEY_INVALID'
-  const displayError = tabError || (error && error !== 'API_KEY_MISSING' && error !== 'API_KEY_INVALID' ? error : null)
+  const showModal = showApiModal || error === 'API_KEY_MISSING'
+  const displayError = tabError || (error && error !== 'API_KEY_MISSING' ? error : null)
 
   return (
     <>
@@ -101,9 +95,6 @@ export default function App() {
           <ResultBubble result={result} profile={profile} onReset={reset} />
         ) : (
           <div className="input-area">
-            {activeTab === 'photo' && (
-              <PhotoTab file={photoFile} onChange={setPhotoFile} />
-            )}
             {activeTab === 'video' && (
               <VideoTab
                 file={videoFile}

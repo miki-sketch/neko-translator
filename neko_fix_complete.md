@@ -1,3 +1,12 @@
+# useGemini.js 完全修正指示
+
+## 背景
+sedコマンドによる編集でuseGemini.jsの括弧構造が壊れてビルドエラーになっている。
+ファイルを正しい状態に完全に書き直してください。
+
+## src/hooks/useGemini.js を以下の内容で完全に上書きしてください
+
+```javascript
 import { useState } from 'react'
 import { getApiKey } from '../utils/storage'
 import { fileToBase64 } from '../utils/fileToBase64'
@@ -37,7 +46,7 @@ export function useGemini() {
 
     try {
       if (inputType === 'video' && file?.size > 20 * 1024 * 1024) {
-        throw new Error('その動画、ちょっと大きすぎるにゃ😅 20MB以内の動画にしてにゃ〜')
+        throw new Error('動画は20MB以内にしてください。')
       }
 
       const promptText = buildPrompt(profile) + (descText ? `\n\n【状況】\n${descText}` : '')
@@ -69,16 +78,16 @@ export function useGemini() {
       if (!res.ok) {
         const msg = (json.error?.message || '').toLowerCase()
         if (res.status === 401 || (res.status === 400 && msg.includes('api key'))) {
-          throw new Error('APIキーが違うみたいにゃ🔑 右上の⚙️から確認してみてね！')
+          throw new Error('API_KEY_INVALID')
         }
-        throw new Error('にゃ？うまく繋がらなかったみたい😿 もう一度試してみてにゃ〜')
+        throw new Error('通信エラーが発生しました。接続を確認してください。')
       }
 
       const text = json.candidates?.[0]?.content?.parts?.[0]?.text || ''
       const parsed = parseResult(text)
 
       if (!parsed) {
-        throw new Error('うーん、猫ちゃんの声が聞き取れなかったにゃ…🐱 別の動画や音声で試してみてね！')
+        throw new Error('猫が見つかりませんでした。別の写真や動画をお試しください。')
       }
 
       setResult({
@@ -99,3 +108,14 @@ export function useGemini() {
 
   return { loading, result, error, translate, reset }
 }
+```
+
+## 確認事項
+- videoMetadata は含めない（Gemini APIの正式パラメータではないため削除）
+- analyzedDuration: '冒頭10秒' の付与はそのまま残す（バナー表示用）
+- ビルドエラーがないことを npm run build で確認すること
+
+## 完了後に実行
+```
+git add . && git commit -m "fix: restore useGemini.js to working state" && git push
+```
