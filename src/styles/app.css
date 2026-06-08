@@ -265,6 +265,41 @@ body {
 }
 .change-btn:hover { border-color: var(--error-text); color: var(--error-text); }
 
+/* ──────────────── Trim Seconds Row ──────────────── */
+.trim-seconds-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  background: var(--white);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+}
+.trim-seconds-row label {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+  white-space: nowrap;
+}
+.trim-seconds-row input[type='number'] {
+  width: 4.5rem;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0.3rem 0.5rem;
+  font-size: 0.95rem;
+  font-family: inherit;
+  color: var(--text);
+  background: var(--bg);
+  outline: none;
+  text-align: center;
+  transition: border-color 0.2s;
+}
+.trim-seconds-row input[type='number']:focus { border-color: var(--accent); }
+.trim-seconds-row span {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
 /* ──────────────── Description Textarea ──────────────── */
 .desc-textarea {
   border: 1.5px solid var(--border);

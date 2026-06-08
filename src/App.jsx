@@ -33,6 +33,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('video')
   const [profile, setProfile] = useState(getProfile())
 
+  const [trimSeconds, setTrimSeconds] = useState(15)
   const [videoFile, setVideoFile] = useState(null)
   const [audioFile, setAudioFile] = useState(null)
   const [videoDesc, setVideoDesc] = useState('')
@@ -50,7 +51,7 @@ export default function App() {
 
   function handleTranslate() {
     if (activeTab === 'video' && videoFile) {
-      translate('video', { file: videoFile, mimeType: normalizeMimeType(videoFile), descText: videoDesc }, profile)
+      translate('video', { file: videoFile, mimeType: normalizeMimeType(videoFile), descText: videoDesc, trimSeconds }, profile)
     } else if (activeTab === 'audio' && audioFile) {
       translate('audio', { file: audioFile, mimeType: normalizeMimeType(audioFile), descText: audioDesc }, profile)
     } else if (activeTab === 'youtube' && youtubeUrl.trim()) {
@@ -102,6 +103,8 @@ export default function App() {
                 desc={videoDesc}
                 onDescChange={setVideoDesc}
                 onError={setTabError}
+                trimSeconds={trimSeconds}
+                onTrimSecondsChange={setTrimSeconds}
               />
             )}
             {activeTab === 'audio' && (

@@ -1,21 +1,14 @@
 import { useRef, useState } from 'react'
-import { getVideoDuration } from '../utils/fileToBase64'
 
-export default function VideoTab({ file, onChange, desc, onDescChange, onError }) {
+export default function VideoTab({ file, onChange, desc, onDescChange, onError, trimSeconds, onTrimSecondsChange }) {
   const inputRef = useRef(null)
   const [dragging, setDragging] = useState(false)
 
-  async function handleFile(f) {
+  function handleFile(f) {
     if (!f) return
-    if (f.size > 20 * 1024 * 1024) { onError('動画は20MB以内にしてください。'); return }
-    try {
-      const duration = await getVideoDuration(f)
-      if (duration > 10) { onError('動画は10秒以内にしてください。'); return }
-      onError(null)
-      onChange(f)
-    } catch {
-      onError('動画の読み込みに失敗しました。')
-    }
+    if (f.size > 20 * 1024 * 1024) { onError('その動画、ちょっと大きすぎるにゃ😅 20MB以内の動画にしてにゃ〜'); return }
+    onError(null)
+    onChange(f)
   }
 
   function handleRemove(e) {
@@ -51,9 +44,20 @@ export default function VideoTab({ file, onChange, desc, onDescChange, onError }
           <div className="drop-placeholder">
             <span className="drop-icon">🎬</span>
             <p className="drop-text">動画をドロップ、またはタップして選択</p>
-            <p className="drop-hint">mp4 / mov・10秒以内・20MB以内</p>
+            <p className="drop-hint">mp4 / mov・20MB以内</p>
           </div>
         )}
+      </div>
+      <div className="trim-seconds-row">
+        <label>解析する秒数</label>
+        <input
+          type="number"
+          min={1}
+          max={60}
+          value={trimSeconds}
+          onChange={e => onTrimSecondsChange(Number(e.target.value))}
+        />
+        <span>秒</span>
       </div>
       <textarea
         className="desc-textarea"

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { getApiKey } from '../utils/storage'
-import { fileToBase64 } from '../utils/fileToBase64'
+import { fileToBase64, videoToBase64Trimmed } from '../utils/fileToBase64'
 import { buildPrompt } from '../utils/buildPrompt'
 
 const ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent'
@@ -23,7 +23,7 @@ export function useGemini() {
   const [result, setResult] = useState(null)
   const [error, setError] = useState(null)
 
-  async function translate(inputType, { file, mimeType, youtubeUrl, descText }, profile) {
+  async function translate(inputType, { file, mimeType, youtubeUrl, descText, trimSeconds }, profile) {
     setLoading(true)
     setError(null)
     setResult(null)
@@ -42,12 +42,17 @@ export function useGemini() {
 
       const promptText = buildPrompt(profile) + (descText ? `\n\n【状況】\n${descText}` : '')
       let parts
+      let analyzedDuration = inputType === 'youtube' ? '冒頭10秒' : null
 
       if (inputType === 'youtube') {
         parts = [
           { file_data: { file_uri: youtubeUrl } },
           { text: promptText }
         ]
+      } else if (inputType === 'video') {
+        const { base64: data, mimeType: actualMime, actualSeconds } = await videoToBase64Trimmed(file, trimSeconds)
+        parts = [{ inline_data: { mime_type: actualMime, data } }, { text: promptText }]
+        analyzedDuration = `冒頭${actualSeconds}秒`
       } else {
         const data = await fileToBase64(file)
         parts = [{ inline_data: { mime_type: mimeType, data } }, { text: promptText }]
@@ -81,10 +86,7 @@ export function useGemini() {
         throw new Error('うーん、猫ちゃんの声が聞き取れなかったにゃ…🐱 別の動画や音声で試してみてね！')
       }
 
-      setResult({
-        ...parsed,
-        analyzedDuration: inputType === 'youtube' ? '冒頭10秒' : null
-      })
+      setResult({ ...parsed, analyzedDuration })
     } catch (e) {
       setError(e.message)
     } finally {
