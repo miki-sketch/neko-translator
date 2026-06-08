@@ -6,40 +6,24 @@ import TabBar from './components/TabBar'
 import VideoTab from './components/VideoTab'
 import AudioTab from './components/AudioTab'
 import YoutubeTab from './components/YoutubeTab'
+import YoutubeWarningModal from './components/YoutubeWarningModal'
 import ProfileForm from './components/ProfileForm'
 import TranslateButton from './components/TranslateButton'
 import ResultBubble from './components/ResultBubble'
 import LoadingCat from './components/LoadingCat'
-
-function normalizeMimeType(file) {
-  const type = file.type || ''
-  const ext = file.name.split('.').pop().toLowerCase()
-  const overrides = {
-    'video/quicktime': 'video/mp4',
-    'audio/x-m4a': 'audio/mp4',
-    'audio/mp3': 'audio/mpeg',
-  }
-  if (overrides[type]) return overrides[type]
-  if (type) return type
-  const extMap = {
-    mp4: 'video/mp4', mov: 'video/mp4',
-    mp3: 'audio/mpeg', m4a: 'audio/mp4', wav: 'audio/wav',
-  }
-  return extMap[ext] || ''
-}
 
 export default function App() {
   const [showApiModal, setShowApiModal] = useState(!getApiKey())
   const [activeTab, setActiveTab] = useState('video')
   const [profile, setProfile] = useState(getProfile())
 
-  const [trimSeconds, setTrimSeconds] = useState(15)
-  const [videoFile, setVideoFile] = useState(null)
-  const [audioFile, setAudioFile] = useState(null)
   const [videoDesc, setVideoDesc] = useState('')
   const [audioDesc, setAudioDesc] = useState('')
   const [youtubeUrl, setYoutubeUrl] = useState('')
   const [tabError, setTabError] = useState(null)
+
+  const [showYoutubeWarning, setShowYoutubeWarning] = useState(false)
+  const [youtubeConsented, setYoutubeConsented] = useState(false)
 
   const { loading, result, error, translate, reset } = useGemini()
 
@@ -47,27 +31,30 @@ export default function App() {
     setActiveTab(tab)
     setTabError(null)
     reset()
-  }
-
-  function handleTranslate() {
-    if (activeTab === 'video' && videoFile) {
-      translate('video', { file: videoFile, mimeType: normalizeMimeType(videoFile), descText: videoDesc, trimSeconds }, profile)
-    } else if (activeTab === 'audio' && audioFile) {
-      translate('audio', { file: audioFile, mimeType: normalizeMimeType(audioFile), descText: audioDesc, trimSeconds }, profile)
-    } else if (activeTab === 'youtube' && youtubeUrl.trim()) {
-      translate('youtube', { youtubeUrl: youtubeUrl.trim(), trimSeconds }, profile)
+    if (tab === 'youtube' && !youtubeConsented) {
+      setShowYoutubeWarning(true)
     }
   }
 
-  function canTranslate() {
-    if (loading || tabError) return false
-    if (activeTab === 'video') return !!videoFile
-    if (activeTab === 'audio') return !!audioFile
-    if (activeTab === 'youtube') {
-      const u = youtubeUrl.trim()
-      return !!u && (u.includes('youtube.com/') || u.includes('youtu.be/'))
-    }
-    return false
+  function handleYoutubeConsent() {
+    setYoutubeConsented(true)
+    setShowYoutubeWarning(false)
+  }
+
+  function handleYoutubeCancel() {
+    setShowYoutubeWarning(false)
+    setActiveTab('video')
+  }
+
+  function handleYoutubeTranslate() {
+    const u = youtubeUrl.trim()
+    if (u) translate('youtube', { youtubeUrl: u }, profile)
+  }
+
+  function canTranslateYoutube() {
+    if (loading) return false
+    const u = youtubeUrl.trim()
+    return !!u && (u.includes('youtube.com/') || u.includes('youtu.be/'))
   }
 
   const showModal = showApiModal || error === 'API_KEY_MISSING'
@@ -77,6 +64,9 @@ export default function App() {
     <>
       {showModal && (
         <ApiKeySetup onSave={() => { setShowApiModal(false); reset() }} />
+      )}
+      {showYoutubeWarning && (
+        <YoutubeWarningModal onConsent={handleYoutubeConsent} onCancel={handleYoutubeCancel} />
       )}
       <div className="app">
         <header className="header">
@@ -98,8 +88,7 @@ export default function App() {
           <div className="input-area">
             {activeTab === 'video' && (
               <VideoTab
-                file={videoFile}
-                onChange={setVideoFile}
+                onReady={(blob, seconds) => translate('video', { blob, recordedSeconds: seconds, descText: videoDesc }, profile)}
                 desc={videoDesc}
                 onDescChange={setVideoDesc}
                 onError={setTabError}
@@ -107,8 +96,7 @@ export default function App() {
             )}
             {activeTab === 'audio' && (
               <AudioTab
-                file={audioFile}
-                onChange={setAudioFile}
+                onReady={(blob, seconds) => translate('audio', { blob, recordedSeconds: seconds, descText: audioDesc }, profile)}
                 desc={audioDesc}
                 onDescChange={setAudioDesc}
                 onError={setTabError}
@@ -118,21 +106,11 @@ export default function App() {
               <YoutubeTab url={youtubeUrl} onChange={setYoutubeUrl} />
             )}
 
-            <div className="trim-seconds-row">
-              <label>解析する秒数</label>
-              <input
-                type="number"
-                min={1}
-                max={60}
-                value={trimSeconds}
-                onChange={e => setTrimSeconds(Number(e.target.value))}
-              />
-              <span>秒</span>
-            </div>
-
             {displayError && <p className="error-msg">{displayError}</p>}
 
-            <TranslateButton onClick={handleTranslate} disabled={!canTranslate()} />
+            {activeTab === 'youtube' && (
+              <TranslateButton onClick={handleYoutubeTranslate} disabled={!canTranslateYoutube()} />
+            )}
 
             <p className="privacy-notice">📤 アップロードされたファイルはGemini APIに送信されます</p>
           </div>

@@ -17,7 +17,7 @@ export default function YoutubeTab({ url, onChange }) {
         )}
       </div>
       {isInvalid && <p className="youtube-hint error">YouTube の URL を入力してください</p>}
-      {!isInvalid && <p className="youtube-hint">公開動画のみ対応・10秒程度推奨</p>}
+      <p className="youtube-hint">公開動画のみ対応 ／ 短い動画（1〜2分以内）を推奨</p>
     </div>
   )
 }
