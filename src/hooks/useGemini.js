@@ -60,12 +60,7 @@ export function useGemini() {
           contents: [{ parts }],
           generationConfig: {
             maxOutputTokens: 2048,
-            ...(inputType === 'youtube' && {
-              videoMetadata: { startOffset: '0s', endOffset: '10s' }
-            })
           }
-        })
-      })
 
       const json = await res.json()
 
@@ -87,7 +82,6 @@ export function useGemini() {
       setResult({
         ...parsed,
         analyzedDuration: inputType === 'youtube' ? '冒頭10秒' : null
-      })
     } catch (e) {
       setError(e.message)
     } finally {
