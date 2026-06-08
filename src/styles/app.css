@@ -352,9 +352,31 @@ body {
   gap: 0.5rem;
   width: 100%;
 }
+.seek-bar {
+  width: 100%;
+  accent-color: #E07020;
+  cursor: pointer;
+  height: 4px;
+}
+.seek-bar:disabled { cursor: not-allowed; opacity: 0.4; }
+
+.time-display {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  align-self: flex-end;
+  font-variant-numeric: tabular-nums;
+}
+
+.recording-message {
+  font-size: 0.875rem;
+  color: var(--accent);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
 .capture-info {
   font-size: 0.875rem;
-  color: #2A8040;
+  color: var(--accent);
   font-weight: 600;
 }
 .translate-capture-btn {

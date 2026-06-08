@@ -1,5 +1,11 @@
 import { useRef, useState } from 'react'
 
+function formatTime(secs) {
+  const m = Math.floor(secs / 60)
+  const s = Math.floor(secs % 60)
+  return `${m}:${s.toString().padStart(2, '0')}`
+}
+
 export default function MediaPlayer({ mediaType, onReady, desc, onDescChange, onError }) {
   const [file, setFile] = useState(null)
   const [previewUrl, setPreviewUrl] = useState(null)
@@ -7,6 +13,8 @@ export default function MediaPlayer({ mediaType, onReady, desc, onDescChange, on
   const [isRecording, setIsRecording] = useState(false)
   const [capturedBlob, setCapturedBlob] = useState(null)
   const [recordedSeconds, setRecordedSeconds] = useState(0)
+  const [currentTime, setCurrentTime] = useState(0)
+  const [duration, setDuration] = useState(0)
 
   const mediaRef = useRef(null)
   const audioCtxRef = useRef(null)
@@ -34,6 +42,8 @@ export default function MediaPlayer({ mediaType, onReady, desc, onDescChange, on
     setCapturedBlob(null)
     setIsPlaying(false)
     setIsRecording(false)
+    setCurrentTime(0)
+    setDuration(0)
   }
 
   function handleRemove(e) {
@@ -44,6 +54,8 @@ export default function MediaPlayer({ mediaType, onReady, desc, onDescChange, on
     setCapturedBlob(null)
     setIsPlaying(false)
     setIsRecording(false)
+    setCurrentTime(0)
+    setDuration(0)
     if (inputRef.current) inputRef.current.value = ''
   }
 
@@ -80,6 +92,12 @@ export default function MediaPlayer({ mediaType, onReady, desc, onDescChange, on
     setIsPlaying(false)
   }
 
+  function handleSeek(e) {
+    const t = Number(e.target.value)
+    if (mediaRef.current) mediaRef.current.currentTime = t
+    setCurrentTime(t)
+  }
+
   function startRecording() {
     if (!destRef.current) return
     chunksRef.current = []
@@ -110,6 +128,7 @@ export default function MediaPlayer({ mediaType, onReady, desc, onDescChange, on
   function handleReset() {
     setCapturedBlob(null)
     setIsPlaying(false)
+    setCurrentTime(0)
     if (mediaRef.current) {
       mediaRef.current.pause()
       mediaRef.current.currentTime = 0
@@ -121,6 +140,12 @@ export default function MediaPlayer({ mediaType, onReady, desc, onDescChange, on
     : 'audio/mpeg,audio/mp4,audio/wav,audio/x-m4a,.mp3,.m4a,.wav'
 
   const icon = mediaType === 'video' ? '🎬' : '🎙'
+
+  const mediaEvents = {
+    onTimeUpdate: () => { if (mediaRef.current) setCurrentTime(mediaRef.current.currentTime) },
+    onLoadedMetadata: () => { if (mediaRef.current) setDuration(mediaRef.current.duration || 0) },
+    onEnded: () => setIsPlaying(false),
+  }
 
   return (
     <div className="media-player">
@@ -143,22 +168,31 @@ export default function MediaPlayer({ mediaType, onReady, desc, onDescChange, on
       ) : (
         <div className="player-area">
           {mediaType === 'video' && (
-            <video
-              ref={mediaRef}
-              src={previewUrl}
-              className="player-video"
-              onEnded={() => setIsPlaying(false)}
-              playsInline
-            />
+            <video ref={mediaRef} src={previewUrl} className="player-video" playsInline {...mediaEvents} />
           )}
           {mediaType === 'audio' && (
             <>
-              <audio ref={mediaRef} src={previewUrl} onEnded={() => setIsPlaying(false)} />
+              <audio ref={mediaRef} src={previewUrl} {...mediaEvents} />
               <div className="audio-visual">
                 <span className="audio-icon">🎵</span>
               </div>
             </>
           )}
+
+          {/* Seek bar */}
+          <input
+            type="range"
+            min={0}
+            max={duration || 0}
+            step={0.1}
+            value={currentTime}
+            onChange={handleSeek}
+            disabled={isRecording}
+            className="seek-bar"
+          />
+          <div className="time-display">
+            {formatTime(currentTime)} / {formatTime(duration)}
+          </div>
 
           <p className="player-filename">{file.name}</p>
 
@@ -175,6 +209,7 @@ export default function MediaPlayer({ mediaType, onReady, desc, onDescChange, on
 
           {isRecording && (
             <div className="player-controls">
+              <p className="recording-message">🐱 翻訳開始だにゃ〜！</p>
               <button className="player-btn record-stop-btn" onClick={stopRecording}>
                 ⏹ 録音停止
               </button>
@@ -183,7 +218,7 @@ export default function MediaPlayer({ mediaType, onReady, desc, onDescChange, on
 
           {capturedBlob && !isRecording && (
             <div className="capture-ready">
-              <p className="capture-info">✅ {recordedSeconds}秒間を録音しました</p>
+              <p className="capture-info">😸 {recordedSeconds}秒間、翻訳します！</p>
               <button className="translate-capture-btn" onClick={() => onReady(capturedBlob, recordedSeconds)}>
                 🐱 この内容で翻訳する
               </button>
