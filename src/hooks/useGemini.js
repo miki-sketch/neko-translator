@@ -53,7 +53,7 @@ export function useGemini() {
       const res = await fetch(`${ENDPOINT}?key=${apiKey}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contents: [{ parts }], generationConfig: { maxOutputTokens: 1024 } })
+        body: JSON.stringify({ contents: [{ parts }], generationConfig: { maxOutputTokens: 2048 } })
       })
 
       const json = await res.json()
