@@ -41,21 +41,21 @@ export function useGemini() {
       }
 
       const promptText = buildPrompt(profile) + (descText ? `\n\n【状況】\n${descText}` : '')
+      const trimNote = `\n\n冒頭${trimSeconds}秒のみを解析してください。`
+      const analyzedDuration = `冒頭${trimSeconds}秒`
       let parts
-      let analyzedDuration = inputType === 'youtube' ? '冒頭10秒' : null
 
       if (inputType === 'youtube') {
         parts = [
           { file_data: { file_uri: youtubeUrl } },
-          { text: promptText }
+          { text: promptText + trimNote }
         ]
       } else if (inputType === 'video') {
-        const { base64: data, mimeType: actualMime, actualSeconds } = await videoToBase64Trimmed(file, trimSeconds)
+        const { base64: data, mimeType: actualMime } = await videoToBase64Trimmed(file, trimSeconds)
         parts = [{ inline_data: { mime_type: actualMime, data } }, { text: promptText }]
-        analyzedDuration = `冒頭${actualSeconds}秒`
       } else {
         const data = await fileToBase64(file)
-        parts = [{ inline_data: { mime_type: mimeType, data } }, { text: promptText }]
+        parts = [{ inline_data: { mime_type: mimeType, data } }, { text: promptText + trimNote }]
       }
 
       const res = await fetch(`${ENDPOINT}?key=${apiKey}`, {

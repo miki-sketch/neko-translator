@@ -53,9 +53,9 @@ export default function App() {
     if (activeTab === 'video' && videoFile) {
       translate('video', { file: videoFile, mimeType: normalizeMimeType(videoFile), descText: videoDesc, trimSeconds }, profile)
     } else if (activeTab === 'audio' && audioFile) {
-      translate('audio', { file: audioFile, mimeType: normalizeMimeType(audioFile), descText: audioDesc }, profile)
+      translate('audio', { file: audioFile, mimeType: normalizeMimeType(audioFile), descText: audioDesc, trimSeconds }, profile)
     } else if (activeTab === 'youtube' && youtubeUrl.trim()) {
-      translate('youtube', { youtubeUrl: youtubeUrl.trim() }, profile)
+      translate('youtube', { youtubeUrl: youtubeUrl.trim(), trimSeconds }, profile)
     }
   }
 
@@ -103,8 +103,6 @@ export default function App() {
                 desc={videoDesc}
                 onDescChange={setVideoDesc}
                 onError={setTabError}
-                trimSeconds={trimSeconds}
-                onTrimSecondsChange={setTrimSeconds}
               />
             )}
             {activeTab === 'audio' && (
@@ -119,6 +117,18 @@ export default function App() {
             {activeTab === 'youtube' && (
               <YoutubeTab url={youtubeUrl} onChange={setYoutubeUrl} />
             )}
+
+            <div className="trim-seconds-row">
+              <label>解析する秒数</label>
+              <input
+                type="number"
+                min={1}
+                max={60}
+                value={trimSeconds}
+                onChange={e => setTrimSeconds(Number(e.target.value))}
+              />
+              <span>秒</span>
+            </div>
 
             {displayError && <p className="error-msg">{displayError}</p>}
 

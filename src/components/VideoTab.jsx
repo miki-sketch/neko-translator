@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 
-export default function VideoTab({ file, onChange, desc, onDescChange, onError, trimSeconds, onTrimSecondsChange }) {
+export default function VideoTab({ file, onChange, desc, onDescChange, onError }) {
   const inputRef = useRef(null)
   const [dragging, setDragging] = useState(false)
 
@@ -47,17 +47,6 @@ export default function VideoTab({ file, onChange, desc, onDescChange, onError, 
             <p className="drop-hint">mp4 / mov・20MB以内</p>
           </div>
         )}
-      </div>
-      <div className="trim-seconds-row">
-        <label>解析する秒数</label>
-        <input
-          type="number"
-          min={1}
-          max={60}
-          value={trimSeconds}
-          onChange={e => onTrimSecondsChange(Number(e.target.value))}
-        />
-        <span>秒</span>
       </div>
       <textarea
         className="desc-textarea"
