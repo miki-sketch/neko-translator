@@ -60,9 +60,47 @@ export function useGemini() {
 
       if (inputType === 'youtube') {
         parts = [
-          { file_data: { file_uri: youtubeUrl } },
+          { fileData: { mimeType: 'video/*', fileUri: youtubeUrl } },
           { text: promptText }
         ]
+        const requestBody = {
+          contents: [{ parts }],
+          generationConfig: { maxOutputTokens: 2048 }
+        }
+        console.log('YouTube request body:', JSON.stringify(requestBody, null, 2))
+        const ytRes = await fetch(`${ENDPOINT}?key=${apiKey}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(requestBody)
+        })
+        const ytJson = await ytRes.json()
+        console.log('YouTube response status:', ytRes.status)
+        console.log('YouTube response body:', JSON.stringify(ytJson, null, 2))
+        if (!ytRes.ok) {
+          const errMsg = ytJson.error?.message || ''
+          const errMsgLower = errMsg.toLowerCase()
+          if (ytRes.status === 401 || (ytRes.status === 400 && errMsgLower.includes('api key'))) {
+            throw new Error('APIキーが違うみたいにゃ🔑 右上の⚙️から確認してみてね！')
+          }
+          if (ytRes.status === 429) {
+            const retryMatch = errMsg.match(/retry in ([\d.]+)s/i)
+            if (retryMatch) {
+              const seconds = Math.ceil(parseFloat(retryMatch[1]))
+              throw new Error(`リクエストが集中しています。${seconds}秒後にもう一度お試しください。`)
+            }
+            throw new Error(
+              '本日の無料利用枠を使い切りました。\n' +
+              '・明日またお試しください\n' +
+              '・または「APIキーを設定」から別のキーに変更してください'
+            )
+          }
+          throw new Error('にゃ？うまく繋がらなかったみたい😿 もう一度試してみてにゃ〜')
+        }
+        const ytText = ytJson.candidates?.[0]?.content?.parts?.[0]?.text || ''
+        const ytParsed = parseResult(ytText)
+        if (!ytParsed) throw new Error('うーん、猫ちゃんの声が聞き取れなかったにゃ…🐱 別の動画や音声で試してみてね！')
+        setResult({ ...ytParsed, analyzedDuration: null })
+        return
       } else {
         const data = await blobToBase64(blob)
         parts = [
