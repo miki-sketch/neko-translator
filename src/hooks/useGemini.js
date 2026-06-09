@@ -18,6 +18,20 @@ function parseResult(text) {
   return voice ? { voice, reason } : null
 }
 
+function normalizeYoutubeUrl(url) {
+  try {
+    const parsed = new URL(url)
+    if (parsed.hostname === 'youtu.be') {
+      return `https://www.youtube.com/watch?v=${parsed.pathname.slice(1)}`
+    }
+    const videoId = parsed.searchParams.get('v')
+    if (videoId) return `https://www.youtube.com/watch?v=${videoId}`
+    return url
+  } catch {
+    return url
+  }
+}
+
 function fmtMediaTime(sec) {
   const m = Math.floor(sec / 60)
   const s = Math.floor(sec % 60).toString().padStart(2, '0')
@@ -59,23 +73,21 @@ export function useGemini() {
       let analyzedDuration = null
 
       if (inputType === 'youtube') {
+        const cleanUrl = normalizeYoutubeUrl(youtubeUrl)
         parts = [
-          { fileData: { mimeType: 'video/*', fileUri: youtubeUrl } },
+          { fileData: { mimeType: 'video/*', fileUri: cleanUrl } },
           { text: promptText }
         ]
         const requestBody = {
           contents: [{ parts }],
           generationConfig: { maxOutputTokens: 2048 }
         }
-        console.log('YouTube request body:', JSON.stringify(requestBody, null, 2))
         const ytRes = await fetch(`${ENDPOINT}?key=${apiKey}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(requestBody)
         })
         const ytJson = await ytRes.json()
-        console.log('YouTube response status:', ytRes.status)
-        console.log('YouTube response body:', JSON.stringify(ytJson, null, 2))
         if (!ytRes.ok) {
           const errMsg = ytJson.error?.message || ''
           const errMsgLower = errMsg.toLowerCase()
