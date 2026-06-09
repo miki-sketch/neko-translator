@@ -9,6 +9,7 @@ export async function sendLog({ tab, apiType, result, error = '' }) {
     await fetch(GAS_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain' },
+      redirect: 'follow',
       body: JSON.stringify({ tab, apiType, result, error })
     })
     console.log('ログ送信完了')
