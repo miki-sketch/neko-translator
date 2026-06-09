@@ -25,6 +25,8 @@ export default function App() {
   const [showYoutubeWarning, setShowYoutubeWarning] = useState(false)
   const [youtubeConsented, setYoutubeConsented] = useState(false)
 
+  const [playerResetSignal, setPlayerResetSignal] = useState(0)
+
   const { loading, result, error, translate, reset } = useGemini()
 
   function handleTabChange(tab) {
@@ -57,8 +59,20 @@ export default function App() {
     return !!u && (u.includes('youtube.com/') || u.includes('youtu.be/'))
   }
 
+  function handleReset() {
+    reset()
+    setPlayerResetSignal(s => s + 1)
+  }
+
+  function handleBack() {
+    reset()
+    setTabError(null)
+    setPlayerResetSignal(s => s + 1)
+  }
+
   const showModal = showApiModal || error === 'API_KEY_MISSING'
   const displayError = tabError || (error && error !== 'API_KEY_MISSING' ? error : null)
+  const hideInputArea = loading || !!result
 
   return (
     <>
@@ -80,41 +94,45 @@ export default function App() {
 
         <TabBar active={activeTab} onChange={handleTabChange} />
 
-        {loading ? (
-          <LoadingCat />
-        ) : result ? (
-          <ResultBubble result={result} profile={profile} onReset={reset} />
-        ) : (
-          <div className="input-area">
-            {activeTab === 'video' && (
-              <VideoTab
-                onReady={(blob, seconds) => translate('video', { blob, recordedSeconds: seconds, descText: videoDesc }, profile)}
-                desc={videoDesc}
-                onDescChange={setVideoDesc}
-                onError={setTabError}
-              />
-            )}
-            {activeTab === 'audio' && (
-              <AudioTab
-                onReady={(blob, seconds) => translate('audio', { blob, recordedSeconds: seconds, descText: audioDesc }, profile)}
-                desc={audioDesc}
-                onDescChange={setAudioDesc}
-                onError={setTabError}
-              />
-            )}
-            {activeTab === 'youtube' && (
-              <YoutubeTab url={youtubeUrl} onChange={setYoutubeUrl} />
-            )}
+        {loading && <LoadingCat />}
+        {result && !loading && <ResultBubble result={result} profile={profile} onReset={handleReset} />}
 
-            {displayError && <p className="error-msg">{displayError}</p>}
+        <div className="input-area" style={hideInputArea ? { display: 'none' } : undefined}>
+          {activeTab === 'video' && (
+            <VideoTab
+              onReady={(blob, secs, startT, endT) => translate('video', { blob, recordedSeconds: secs, startMediaTime: startT, endMediaTime: endT, descText: videoDesc }, profile)}
+              desc={videoDesc}
+              onDescChange={setVideoDesc}
+              onError={setTabError}
+              resetSignal={playerResetSignal}
+            />
+          )}
+          {activeTab === 'audio' && (
+            <AudioTab
+              onReady={(blob, secs, startT, endT) => translate('audio', { blob, recordedSeconds: secs, startMediaTime: startT, endMediaTime: endT, descText: audioDesc }, profile)}
+              desc={audioDesc}
+              onDescChange={setAudioDesc}
+              onError={setTabError}
+              resetSignal={playerResetSignal}
+            />
+          )}
+          {activeTab === 'youtube' && (
+            <YoutubeTab url={youtubeUrl} onChange={setYoutubeUrl} />
+          )}
 
-            {activeTab === 'youtube' && (
-              <TranslateButton onClick={handleYoutubeTranslate} disabled={!canTranslateYoutube()} />
-            )}
+          {displayError && (
+            <div className="error-wrap">
+              <p className="error-msg">{displayError}</p>
+              <button className="back-btn" onClick={handleBack}>← 戻る</button>
+            </div>
+          )}
 
-            <p className="privacy-notice">📤 アップロードされたファイルはGemini APIに送信されます</p>
-          </div>
-        )}
+          {activeTab === 'youtube' && (
+            <TranslateButton onClick={handleYoutubeTranslate} disabled={!canTranslateYoutube()} />
+          )}
+
+          <p className="privacy-notice">📤 アップロードされたファイルはGemini APIに送信されます</p>
+        </div>
       </div>
     </>
   )

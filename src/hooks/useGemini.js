@@ -23,7 +23,13 @@ export function useGemini() {
   const [result, setResult] = useState(null)
   const [error, setError] = useState(null)
 
-  async function translate(inputType, { blob, recordedSeconds, youtubeUrl, descText }, profile) {
+  function fmtMediaTime(sec) {
+    const m = Math.floor(sec / 60)
+    const s = Math.floor(sec % 60).toString().padStart(2, '0')
+    return `${m}:${s}`
+  }
+
+  async function translate(inputType, { blob, recordedSeconds, startMediaTime, endMediaTime, youtubeUrl, descText }, profile) {
     setLoading(true)
     setError(null)
     setResult(null)
@@ -51,7 +57,8 @@ export function useGemini() {
           { inline_data: { mime_type: blob.type || 'audio/webm', data } },
           { text: promptText }
         ]
-        analyzedDuration = `${recordedSeconds}秒間を解析しました`
+        const dur = Math.round(endMediaTime - startMediaTime)
+        analyzedDuration = `${fmtMediaTime(startMediaTime)}〜${fmtMediaTime(endMediaTime)}（${dur}秒間）`
       }
 
       const res = await fetch(`${ENDPOINT}?key=${apiKey}`, {

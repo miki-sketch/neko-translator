@@ -3,7 +3,7 @@ export default function ResultBubble({ result, profile, onReset }) {
     <div className="result-area">
       {result.analyzedDuration && (
         <div className="analyzed-duration-banner">
-          <span>⏱ {result.analyzedDuration}を解析しました（YouTube節約モード）</span>
+          <span>⏱ {result.analyzedDuration}</span>
         </div>
       )}
       {profile?.name && (

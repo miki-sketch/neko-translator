@@ -1,6 +1,6 @@
 import MediaPlayer from './MediaPlayer'
 
-export default function AudioTab({ onReady, desc, onDescChange, onError }) {
+export default function AudioTab({ onReady, desc, onDescChange, onError, resetSignal }) {
   return (
     <MediaPlayer
       mediaType="audio"
@@ -8,6 +8,7 @@ export default function AudioTab({ onReady, desc, onDescChange, onError }) {
       desc={desc}
       onDescChange={onDescChange}
       onError={onError}
+      resetSignal={resetSignal}
     />
   )
 }
