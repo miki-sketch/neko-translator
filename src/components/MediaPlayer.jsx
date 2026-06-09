@@ -41,8 +41,10 @@ export default function MediaPlayer({ mediaType, onReady, desc, onDescChange, on
     const loop = () => {
       const media = mediaRef.current
       if (media && !media.paused && media.duration) {
-        syncSeekbar(media.currentTime)
-        setCurrentTime(media.currentTime)
+        const elapsed = (Date.now() - startTimeRef.current) / 1000
+        const pos = Math.min(startMediaTimeRef.current + elapsed, media.duration)
+        syncSeekbar(pos)
+        setCurrentTime(pos)
       }
       rafRef.current = requestAnimationFrame(loop)
     }
