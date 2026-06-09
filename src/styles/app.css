@@ -307,17 +307,17 @@ body {
 
 .player-controls {
   display: flex;
-  gap: 0.5rem;
+  gap: 0.375rem;
   width: 100%;
 }
 
 .player-btn {
   flex: 1;
-  padding: 0.625rem 0.75rem;
+  padding: 0.5rem 0.25rem;
   border: 1.5px solid var(--border);
   border-radius: var(--radius-sm);
   background: var(--bg);
-  font-size: 0.875rem;
+  font-size: 0.8rem;
   font-weight: 500;
   font-family: inherit;
   cursor: pointer;
@@ -327,31 +327,33 @@ body {
 .player-btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
 .player-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
-.play-btn { border-color: var(--accent); color: var(--accent); }
-.play-btn:hover:not(:disabled) { background: var(--accent-light); }
+.translate-start-btn:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-light);
+}
+.translate-start-btn:not(:disabled):hover { background: #FFE0B0; border-color: var(--accent-hover); }
 
-.record-btn:not(:disabled) { border-color: #D04040; color: #D04040; }
-.record-btn:not(:disabled):hover { background: #FFF0EE; }
-
-.record-stop-btn {
+.translate-end-btn:not(:disabled) {
   background: #D04040;
   color: white;
   border-color: #D04040;
   animation: blinkRed 0.8s ease-in-out infinite alternate;
 }
-.record-stop-btn:hover { background: #C03030 !important; }
+.translate-end-btn:not(:disabled):hover { background: #C03030; border-color: #C03030; }
+
 @keyframes blinkRed {
   from { background: #D04040; box-shadow: none; }
   to   { background: #FF5555; box-shadow: 0 0 10px rgba(208, 64, 64, 0.5); }
 }
 
-.capture-ready {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.5rem;
-  width: 100%;
+.translate-stop-btn:not(:disabled) {
+  border-color: #999;
+  color: #555;
+  background: #F0F0F0;
 }
+.translate-stop-btn:not(:disabled):hover { border-color: #666; color: #333; }
+
 .seek-bar {
   width: 100%;
   accent-color: #E07020;
@@ -367,48 +369,11 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
-.recording-message {
-  font-size: 0.875rem;
-  color: var(--accent);
-  font-weight: 600;
-  white-space: nowrap;
-}
-
-.capture-info {
+.player-message {
   font-size: 0.875rem;
   color: var(--accent);
   font-weight: 600;
 }
-.translate-capture-btn {
-  width: 100%;
-  padding: 0.875rem;
-  background: var(--accent);
-  color: white;
-  border: none;
-  border-radius: var(--radius);
-  font-size: 0.95rem;
-  font-weight: 700;
-  font-family: inherit;
-  cursor: pointer;
-  transition: background 0.2s;
-  box-shadow: 0 4px 14px rgba(224, 112, 32, 0.3);
-}
-.translate-capture-btn:hover { background: var(--accent-hover); }
-
-.retry-btn { width: 100%; }
-
-.file-remove-btn {
-  background: none;
-  border: 1px solid var(--border);
-  border-radius: 20px;
-  padding: 0.25rem 0.875rem;
-  font-size: 0.8rem;
-  font-family: inherit;
-  color: var(--text-secondary);
-  cursor: pointer;
-  transition: all 0.15s;
-}
-.file-remove-btn:hover { border-color: var(--error-text); color: var(--error-text); }
 
 /* ──────────────── YouTube Warning Modal ──────────────── */
 .yt-warning-body {

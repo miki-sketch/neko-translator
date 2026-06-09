@@ -6,13 +6,12 @@ function formatTime(secs) {
   return `${m}:${s.toString().padStart(2, '0')}`
 }
 
+// status: 'idle' | 'recording' | 'processing'
 export default function MediaPlayer({ mediaType, onReady, desc, onDescChange, onError }) {
   const [file, setFile] = useState(null)
   const [previewUrl, setPreviewUrl] = useState(null)
-  const [isPlaying, setIsPlaying] = useState(false)
-  const [isRecording, setIsRecording] = useState(false)
-  const [capturedBlob, setCapturedBlob] = useState(null)
-  const [recordedSeconds, setRecordedSeconds] = useState(0)
+  const [status, setStatus] = useState('idle')
+  const [message, setMessage] = useState('')
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(0)
 
@@ -22,6 +21,7 @@ export default function MediaPlayer({ mediaType, onReady, desc, onDescChange, on
   const recorderRef = useRef(null)
   const chunksRef = useRef([])
   const startTimeRef = useRef(null)
+  const startMediaTimeRef = useRef(null)
   const inputRef = useRef(null)
 
   function cleanup() {
@@ -39,9 +39,8 @@ export default function MediaPlayer({ mediaType, onReady, desc, onDescChange, on
     const url = URL.createObjectURL(f)
     setFile(f)
     setPreviewUrl(url)
-    setCapturedBlob(null)
-    setIsPlaying(false)
-    setIsRecording(false)
+    setStatus('idle')
+    setMessage('')
     setCurrentTime(0)
     setDuration(0)
   }
@@ -51,15 +50,14 @@ export default function MediaPlayer({ mediaType, onReady, desc, onDescChange, on
     cleanup()
     setFile(null)
     setPreviewUrl(null)
-    setCapturedBlob(null)
-    setIsPlaying(false)
-    setIsRecording(false)
+    setStatus('idle')
+    setMessage('')
     setCurrentTime(0)
     setDuration(0)
     if (inputRef.current) inputRef.current.value = ''
   }
 
-  async function handlePlay() {
+  async function handleStart() {
     const media = mediaRef.current
     if (!media) return
 
@@ -81,15 +79,63 @@ export default function MediaPlayer({ mediaType, onReady, desc, onDescChange, on
     try {
       await audioCtxRef.current.resume()
       await media.play()
-      setIsPlaying(true)
     } catch {
       onError?.('再生に失敗しました。')
+      return
     }
+
+    if (!destRef.current) return
+    chunksRef.current = []
+    const mimeType = MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : ''
+    const recorder = new MediaRecorder(destRef.current.stream, mimeType ? { mimeType } : {})
+    recorder.ondataavailable = e => { if (e.data.size > 0) chunksRef.current.push(e.data) }
+    recorderRef.current = recorder
+    recorder.start()
+
+    startTimeRef.current = Date.now()
+    startMediaTimeRef.current = media.currentTime
+
+    setStatus('recording')
+    setMessage('🐱 翻訳開始だにゃ〜！')
   }
 
-  function handlePause() {
-    mediaRef.current?.pause()
-    setIsPlaying(false)
+  function handleEnd() {
+    const media = mediaRef.current
+    media?.pause()
+
+    const recorder = recorderRef.current
+    if (!recorder || recorder.state === 'inactive') return
+
+    recorder.onstop = () => {
+      const type = recorder.mimeType || 'audio/webm'
+      const blob = new Blob(chunksRef.current, { type })
+      const secs = Math.round((Date.now() - startTimeRef.current) / 1000)
+      setMessage(`😸 ${secs}秒間、翻訳します！`)
+      setStatus('processing')
+      onReady(blob, secs)
+    }
+    recorder.stop()
+  }
+
+  function handleStop() {
+    const media = mediaRef.current
+    media?.pause()
+
+    const recorder = recorderRef.current
+    if (recorder && recorder.state !== 'inactive') {
+      recorder.ondataavailable = null
+      recorder.onstop = null
+      recorder.stop()
+    }
+    recorderRef.current = null
+    chunksRef.current = []
+
+    const resetTime = startMediaTimeRef.current ?? 0
+    if (media) media.currentTime = resetTime
+    setCurrentTime(resetTime)
+
+    setStatus('idle')
+    setMessage('🔄 最初に戻ったにゃ')
   }
 
   function handleSeek(e) {
@@ -98,53 +144,20 @@ export default function MediaPlayer({ mediaType, onReady, desc, onDescChange, on
     setCurrentTime(t)
   }
 
-  function startRecording() {
-    if (!destRef.current) return
-    chunksRef.current = []
-
-    const mimeType = MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : ''
-    const recorder = new MediaRecorder(destRef.current.stream, mimeType ? { mimeType } : {})
-
-    recorder.ondataavailable = e => { if (e.data.size > 0) chunksRef.current.push(e.data) }
-    recorder.onstop = () => {
-      const type = recorder.mimeType || 'audio/webm'
-      const blob = new Blob(chunksRef.current, { type })
-      const secs = Math.round((Date.now() - startTimeRef.current) / 1000)
-      setCapturedBlob(blob)
-      setRecordedSeconds(secs)
-    }
-
-    recorderRef.current = recorder
-    recorder.start()
-    startTimeRef.current = Date.now()
-    setIsRecording(true)
-  }
-
-  function stopRecording() {
-    recorderRef.current?.stop()
-    setIsRecording(false)
-  }
-
-  function handleReset() {
-    setCapturedBlob(null)
-    setIsPlaying(false)
-    setCurrentTime(0)
-    if (mediaRef.current) {
-      mediaRef.current.pause()
-      mediaRef.current.currentTime = 0
-    }
-  }
-
   const accept = mediaType === 'video'
     ? 'video/mp4,video/quicktime,.mp4,.mov'
     : 'audio/mpeg,audio/mp4,audio/wav,audio/x-m4a,.mp3,.m4a,.wav'
 
   const icon = mediaType === 'video' ? '🎬' : '🎙'
 
+  const isRecording = status === 'recording'
+  const isProcessing = status === 'processing'
+  const seekDisabled = isRecording || isProcessing
+
   const mediaEvents = {
     onTimeUpdate: () => { if (mediaRef.current) setCurrentTime(mediaRef.current.currentTime) },
     onLoadedMetadata: () => { if (mediaRef.current) setDuration(mediaRef.current.duration || 0) },
-    onEnded: () => setIsPlaying(false),
+    onEnded: () => { if (isRecording) handleEnd() },
   }
 
   return (
@@ -179,7 +192,6 @@ export default function MediaPlayer({ mediaType, onReady, desc, onDescChange, on
             </>
           )}
 
-          {/* Seek bar */}
           <input
             type="range"
             min={0}
@@ -187,8 +199,9 @@ export default function MediaPlayer({ mediaType, onReady, desc, onDescChange, on
             step={0.1}
             value={currentTime}
             onChange={handleSeek}
-            disabled={isRecording}
+            disabled={seekDisabled}
             className="seek-bar"
+            style={seekDisabled ? { opacity: 0.4 } : undefined}
           />
           <div className="time-display">
             {formatTime(currentTime)} / {formatTime(duration)}
@@ -196,39 +209,38 @@ export default function MediaPlayer({ mediaType, onReady, desc, onDescChange, on
 
           <p className="player-filename">{file.name}</p>
 
-          {!capturedBlob && !isRecording && (
-            <div className="player-controls">
-              <button className="player-btn play-btn" onClick={isPlaying ? handlePause : handlePlay}>
-                {isPlaying ? '⏸ 一時停止' : '▶ 再生'}
-              </button>
-              <button className="player-btn record-btn" onClick={startRecording} disabled={!isPlaying}>
-                🔴 録音開始
-              </button>
-            </div>
-          )}
+          {message && <p className="player-message">{message}</p>}
 
-          {isRecording && (
-            <div className="player-controls">
-              <p className="recording-message">🐱 翻訳開始だにゃ〜！</p>
-              <button className="player-btn record-stop-btn" onClick={stopRecording}>
-                ⏹ 録音停止
-              </button>
-            </div>
-          )}
-
-          {capturedBlob && !isRecording && (
-            <div className="capture-ready">
-              <p className="capture-info">😸 {recordedSeconds}秒間、翻訳します！</p>
-              <button className="translate-capture-btn" onClick={() => onReady(capturedBlob, recordedSeconds)}>
-                🐱 この内容で翻訳する
-              </button>
-              <button className="player-btn retry-btn" onClick={handleReset}>やり直す</button>
-            </div>
-          )}
-
-          {!isRecording && !capturedBlob && (
-            <button className="file-remove-btn" onClick={handleRemove}>削除</button>
-          )}
+          <div className="player-controls">
+            <button
+              className="player-btn translate-start-btn"
+              onClick={handleStart}
+              disabled={isRecording || isProcessing}
+            >
+              翻訳開始
+            </button>
+            <button
+              className="player-btn translate-end-btn"
+              onClick={handleEnd}
+              disabled={!isRecording}
+            >
+              翻訳終了
+            </button>
+            <button
+              className="player-btn translate-stop-btn"
+              onClick={handleStop}
+              disabled={!isRecording}
+            >
+              STOP
+            </button>
+            <button
+              className="player-btn"
+              onClick={handleRemove}
+              disabled={isRecording || isProcessing}
+            >
+              削除
+            </button>
+          </div>
         </div>
       )}
 
