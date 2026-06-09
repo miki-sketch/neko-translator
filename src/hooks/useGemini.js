@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { getApiKey, isBuiltinMode } from '../utils/storage'
 import { blobToBase64 } from '../utils/fileToBase64'
 import { buildPrompt } from '../utils/buildPrompt'
+import { sendLog } from '../utils/sendLog'
 
 const ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent'
 
@@ -48,8 +49,12 @@ export function useGemini() {
     setError(null)
     setResult(null)
 
+    const useBuiltin = isBuiltinMode()
+    const apiType = useBuiltin ? 'ビルトイン' : '自前'
+    let logErrorCode = ''
+
     let apiKey
-    if (isBuiltinMode()) {
+    if (useBuiltin) {
       const password = localStorage.getItem('builtin_password')
       if (password !== import.meta.env.VITE_SHARED_PASSWORD) {
         setError('パスワードが違うにゃ🔐 もう一度確認してみてね！')
@@ -91,6 +96,7 @@ export function useGemini() {
         if (!ytRes.ok) {
           const errMsg = ytJson.error?.message || ''
           const errMsgLower = errMsg.toLowerCase()
+          logErrorCode = String(ytRes.status)
           if (ytRes.status === 401 || (ytRes.status === 400 && errMsgLower.includes('api key'))) {
             throw new Error('APIキーが違うみたいにゃ🔑 右上の⚙️から確認してみてね！')
           }
@@ -111,6 +117,7 @@ export function useGemini() {
         const ytText = ytJson.candidates?.[0]?.content?.parts?.[0]?.text || ''
         const ytParsed = parseResult(ytText)
         if (!ytParsed) throw new Error('うーん、猫ちゃんの声が聞き取れなかったにゃ…🐱 別の動画や音声で試してみてね！')
+        await sendLog({ tab: inputType, apiType, result: '成功' })
         setResult({ ...ytParsed, analyzedDuration: null })
         return
       } else {
@@ -137,6 +144,7 @@ export function useGemini() {
       if (!res.ok) {
         const errMsg = json.error?.message || ''
         const errMsgLower = errMsg.toLowerCase()
+        logErrorCode = String(res.status)
         if (res.status === 401 || (res.status === 400 && errMsgLower.includes('api key'))) {
           throw new Error('APIキーが違うみたいにゃ🔑 右上の⚙️から確認してみてね！')
         }
@@ -163,8 +171,10 @@ export function useGemini() {
       }
 
       setResult({ ...parsed, analyzedDuration })
+      await sendLog({ tab: inputType, apiType, result: '成功' })
     } catch (e) {
       setError(e.message)
+      await sendLog({ tab: inputType, apiType, result: '失敗', error: logErrorCode })
     } finally {
       setLoading(false)
     }
