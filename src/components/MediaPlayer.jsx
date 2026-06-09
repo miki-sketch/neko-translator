@@ -29,6 +29,7 @@ export default function MediaPlayer({ mediaType, onReady, desc, onDescChange, on
 
   // Update seekbar value and CSS fill variable directly (iOS fix)
   function syncSeekbar(time) {
+    console.log('timeupdate:', time)
     if (!seekbarRef.current) return
     seekbarRef.current.value = time
     const d = mediaRef.current?.duration || 0
