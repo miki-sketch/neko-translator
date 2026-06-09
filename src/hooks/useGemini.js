@@ -64,9 +64,7 @@ export function useGemini() {
           { text: promptText }
         ]
       } else {
-        console.log('blob size:', blob.size, 'mime:', blob.type)
         const data = await blobToBase64(blob)
-        console.log('base64 length:', data.length)
         parts = [
           { inline_data: { mime_type: blob.type || 'audio/webm', data } },
           { text: promptText }
@@ -85,13 +83,24 @@ export function useGemini() {
       })
 
       const json = await res.json()
-      console.log('Gemini API response status:', res.status)
-      console.log('Gemini API response body:', JSON.stringify(json, null, 2))
 
       if (!res.ok) {
-        const msg = (json.error?.message || '').toLowerCase()
-        if (res.status === 401 || (res.status === 400 && msg.includes('api key'))) {
+        const errMsg = json.error?.message || ''
+        const errMsgLower = errMsg.toLowerCase()
+        if (res.status === 401 || (res.status === 400 && errMsgLower.includes('api key'))) {
           throw new Error('APIキーが違うみたいにゃ🔑 右上の⚙️から確認してみてね！')
+        }
+        if (res.status === 429) {
+          const retryMatch = errMsg.match(/retry in ([\d.]+)s/i)
+          if (retryMatch) {
+            const seconds = Math.ceil(parseFloat(retryMatch[1]))
+            throw new Error(`リクエストが集中しています。${seconds}秒後にもう一度お試しください。`)
+          }
+          throw new Error(
+            '本日の無料利用枠を使い切りました。\n' +
+            '・明日またお試しください\n' +
+            '・または「APIキーを設定」から別のキーに変更してください'
+          )
         }
         throw new Error('にゃ？うまく繋がらなかったみたい😿 もう一度試してみてにゃ〜')
       }

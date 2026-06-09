@@ -10,12 +10,16 @@ function formatTime(secs) {
 export default function MediaPlayer({ mediaType, onReady, desc, onDescChange, onError, resetSignal }) {
   const [file, setFile] = useState(null)
   const [previewUrl, setPreviewUrl] = useState(null)
+  const [mediaKey, setMediaKey] = useState(0)
   const [status, setStatus] = useState('idle')
   const [message, setMessage] = useState('')
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(0)
 
   const mediaRef = useRef(null)
+  const audioCtxRef = useRef(null)
+  const audioSourceRef = useRef(null)
+  const captureStreamRef = useRef(null)
   const recorderRef = useRef(null)
   const chunksRef = useRef([])
   const startTimeRef = useRef(null)
@@ -36,6 +40,25 @@ export default function MediaPlayer({ mediaType, onReady, desc, onDescChange, on
 
   function cleanup() {
     if (previewUrl) URL.revokeObjectURL(previewUrl)
+    if (audioCtxRef.current) {
+      audioCtxRef.current.close()
+      audioCtxRef.current = null
+      audioSourceRef.current = null
+      captureStreamRef.current = null
+    }
+  }
+
+  // Creates a fresh AudioContext for the current media element.
+  // Call once per file (element is fresh due to mediaKey).
+  function setupAudioContext() {
+    const audioCtx = new AudioContext()
+    const source = audioCtx.createMediaElementSource(mediaRef.current)
+    const destination = audioCtx.createMediaStreamDestination()
+    source.connect(destination)
+    source.connect(audioCtx.destination)
+    audioCtxRef.current = audioCtx
+    audioSourceRef.current = source
+    captureStreamRef.current = destination.stream
   }
 
   function handleFile(f) {
@@ -44,6 +67,7 @@ export default function MediaPlayer({ mediaType, onReady, desc, onDescChange, on
     const url = URL.createObjectURL(f)
     setFile(f)
     setPreviewUrl(url)
+    setMediaKey(k => k + 1)
     setStatus('idle')
     setMessage('')
     setCurrentTime(0)
@@ -58,29 +82,25 @@ export default function MediaPlayer({ mediaType, onReady, desc, onDescChange, on
     media.muted = false
 
     try {
+      if (!audioCtxRef.current || audioCtxRef.current.state === 'closed') {
+        setupAudioContext()
+      }
+      await audioCtxRef.current.resume()
+    } catch {
+      onError?.('音声の取得に失敗しました。ブラウザの設定を確認してください。')
+      return
+    }
+
+    try {
       await media.play()
     } catch {
       onError?.('再生に失敗しました。')
       return
     }
 
-    let audioStream
-    try {
-      const captureFn = media.captureStream?.bind(media) || media.mozCaptureStream?.bind(media)
-      if (!captureFn) throw new Error('captureStream not supported')
-      const stream = captureFn()
-      const audioTracks = stream.getAudioTracks()
-      if (audioTracks.length === 0) throw new Error('no audio tracks')
-      audioStream = new MediaStream(audioTracks)
-    } catch {
-      onError?.('音声の取得に失敗しました。ブラウザの設定を確認してください。')
-      media.pause()
-      return
-    }
-
     chunksRef.current = []
     const mimeType = MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : ''
-    const recorder = new MediaRecorder(audioStream, mimeType ? { mimeType } : {})
+    const recorder = new MediaRecorder(captureStreamRef.current, mimeType ? { mimeType } : {})
     recorder.ondataavailable = e => { if (e.data.size > 0) chunksRef.current.push(e.data) }
     recorderRef.current = recorder
     recorder.start()
@@ -175,11 +195,11 @@ export default function MediaPlayer({ mediaType, onReady, desc, onDescChange, on
       ) : (
         <div className="player-area">
           {mediaType === 'video' && (
-            <video ref={mediaRef} src={previewUrl} className="player-video" playsInline {...mediaEvents} />
+            <video key={mediaKey} ref={mediaRef} src={previewUrl} className="player-video" playsInline {...mediaEvents} />
           )}
           {mediaType === 'audio' && (
             <>
-              <audio ref={mediaRef} src={previewUrl} {...mediaEvents} />
+              <audio key={mediaKey} ref={mediaRef} src={previewUrl} {...mediaEvents} />
               <div className="audio-visual">
                 <span className="audio-icon">🎵</span>
               </div>
