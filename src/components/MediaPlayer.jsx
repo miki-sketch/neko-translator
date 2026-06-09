@@ -16,9 +16,6 @@ export default function MediaPlayer({ mediaType, onReady, desc, onDescChange, on
   const [duration, setDuration] = useState(0)
 
   const mediaRef = useRef(null)
-  const audioCtxRef = useRef(null)
-  const sourceNodeRef = useRef(null)
-  const destRef = useRef(null)
   const recorderRef = useRef(null)
   const chunksRef = useRef([])
   const startTimeRef = useRef(null)
@@ -29,20 +26,16 @@ export default function MediaPlayer({ mediaType, onReady, desc, onDescChange, on
     if (resetSignal > 0) {
       setStatus('idle')
       setMessage('')
+      const t = startMediaTimeRef.current
+      if (t != null && mediaRef.current) {
+        mediaRef.current.currentTime = t
+        setCurrentTime(t)
+      }
     }
   }, [resetSignal])
 
   function cleanup() {
     if (previewUrl) URL.revokeObjectURL(previewUrl)
-    if (sourceNodeRef.current) {
-      sourceNodeRef.current.disconnect()
-      sourceNodeRef.current = null
-    }
-    if (audioCtxRef.current) {
-      audioCtxRef.current.close()
-      audioCtxRef.current = null
-      destRef.current = null
-    }
   }
 
   function handleFile(f) {
@@ -55,45 +48,39 @@ export default function MediaPlayer({ mediaType, onReady, desc, onDescChange, on
     setMessage('')
     setCurrentTime(0)
     setDuration(0)
+    startMediaTimeRef.current = null
   }
 
   async function handleStart() {
     const media = mediaRef.current
     if (!media) return
 
-    try {
-      if (!audioCtxRef.current || audioCtxRef.current.state === 'closed') {
-        audioCtxRef.current = new AudioContext()
-        sourceNodeRef.current = null
-      }
-      const audioCtx = audioCtxRef.current
-      await audioCtx.resume()
-
-      if (sourceNodeRef.current) {
-        sourceNodeRef.current.disconnect()
-      } else {
-        sourceNodeRef.current = audioCtx.createMediaElementSource(media)
-      }
-      const dest = audioCtx.createMediaStreamDestination()
-      sourceNodeRef.current.connect(dest)
-      sourceNodeRef.current.connect(audioCtx.destination)
-      destRef.current = dest
-    } catch {
-      onError?.('音声の取得に失敗しました。ブラウザの設定を確認してください。')
-      return
-    }
+    media.muted = false
 
     try {
-      await audioCtxRef.current.resume()
       await media.play()
     } catch {
       onError?.('再生に失敗しました。')
       return
     }
 
+    let audioStream
+    try {
+      const captureFn = media.captureStream?.bind(media) || media.mozCaptureStream?.bind(media)
+      if (!captureFn) throw new Error('captureStream not supported')
+      const stream = captureFn()
+      const audioTracks = stream.getAudioTracks()
+      if (audioTracks.length === 0) throw new Error('no audio tracks')
+      audioStream = new MediaStream(audioTracks)
+    } catch {
+      onError?.('音声の取得に失敗しました。ブラウザの設定を確認してください。')
+      media.pause()
+      return
+    }
+
     chunksRef.current = []
     const mimeType = MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : ''
-    const recorder = new MediaRecorder(destRef.current.stream, mimeType ? { mimeType } : {})
+    const recorder = new MediaRecorder(audioStream, mimeType ? { mimeType } : {})
     recorder.ondataavailable = e => { if (e.data.size > 0) chunksRef.current.push(e.data) }
     recorderRef.current = recorder
     recorder.start()

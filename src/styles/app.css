@@ -789,3 +789,49 @@ body {
 }
 .modal-btn:hover:not(:disabled) { background: var(--accent-hover); }
 .modal-btn:disabled { background: #D4C4B0; cursor: not-allowed; box-shadow: none; }
+
+.modal-close-btn {
+  background: none;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0.625rem;
+  font-size: 0.875rem;
+  font-family: inherit;
+  cursor: pointer;
+  color: var(--text-secondary);
+  transition: all 0.15s;
+}
+.modal-close-btn:hover { border-color: var(--text); color: var(--text); }
+
+.modal-input-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+.modal-input-row .modal-input { flex: 1; }
+.modal-input:disabled { background: #F5F0E8; color: var(--text-secondary); cursor: default; }
+
+.builtin-api-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+  padding: 0.75rem;
+  background: var(--accent-light);
+  border: 1px solid var(--accent-border);
+  border-radius: var(--radius-sm);
+}
+.builtin-label {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.875rem;
+  cursor: pointer;
+  color: var(--text);
+  user-select: none;
+}
+.builtin-label input[type="checkbox"] {
+  accent-color: var(--accent);
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}

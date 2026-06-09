@@ -12,3 +12,17 @@ export const getProfile = () => {
 export const setProfile = (p) => localStorage.setItem('neko_profile', JSON.stringify(p))
 
 const emptyProfile = () => ({ name: '', age: '', gender: '', traits: [], memo: '' })
+
+export function saveBuiltinMode(password) {
+  localStorage.setItem('use_builtin', 'true')
+  localStorage.setItem('builtin_password', password)
+}
+
+export function clearBuiltinMode() {
+  localStorage.removeItem('use_builtin')
+  localStorage.removeItem('builtin_password')
+}
+
+export function isBuiltinMode() {
+  return localStorage.getItem('use_builtin') === 'true'
+}

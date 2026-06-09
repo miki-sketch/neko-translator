@@ -77,7 +77,10 @@ export default function App() {
   return (
     <>
       {showModal && (
-        <ApiKeySetup onSave={() => { setShowApiModal(false); reset() }} />
+        <ApiKeySetup
+          onSave={() => { setShowApiModal(false); reset() }}
+          onClose={() => setShowApiModal(false)}
+        />
       )}
       {showYoutubeWarning && (
         <YoutubeWarningModal onConsent={handleYoutubeConsent} onCancel={handleYoutubeCancel} />

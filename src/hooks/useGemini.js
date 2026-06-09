@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { getApiKey } from '../utils/storage'
+import { getApiKey, isBuiltinMode } from '../utils/storage'
 import { blobToBase64 } from '../utils/fileToBase64'
 import { buildPrompt } from '../utils/buildPrompt'
 
@@ -18,23 +18,35 @@ function parseResult(text) {
   return voice ? { voice, reason } : null
 }
 
+function fmtMediaTime(sec) {
+  const m = Math.floor(sec / 60)
+  const s = Math.floor(sec % 60).toString().padStart(2, '0')
+  return `${m}:${s}`
+}
+
 export function useGemini() {
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState(null)
   const [error, setError] = useState(null)
-
-  function fmtMediaTime(sec) {
-    const m = Math.floor(sec / 60)
-    const s = Math.floor(sec % 60).toString().padStart(2, '0')
-    return `${m}:${s}`
-  }
 
   async function translate(inputType, { blob, recordedSeconds, startMediaTime, endMediaTime, youtubeUrl, descText }, profile) {
     setLoading(true)
     setError(null)
     setResult(null)
 
-    const apiKey = getApiKey()
+    let apiKey
+    if (isBuiltinMode()) {
+      const password = localStorage.getItem('builtin_password')
+      if (password !== import.meta.env.VITE_SHARED_PASSWORD) {
+        setError('パスワードが違うにゃ🔐 もう一度確認してみてね！')
+        setLoading(false)
+        return
+      }
+      apiKey = import.meta.env.VITE_SHARED_API_KEY
+    } else {
+      apiKey = getApiKey()
+    }
+
     if (!apiKey) {
       setError('API_KEY_MISSING')
       setLoading(false)
@@ -52,7 +64,9 @@ export function useGemini() {
           { text: promptText }
         ]
       } else {
+        console.log('blob size:', blob.size, 'mime:', blob.type)
         const data = await blobToBase64(blob)
+        console.log('base64 length:', data.length)
         parts = [
           { inline_data: { mime_type: blob.type || 'audio/webm', data } },
           { text: promptText }
@@ -71,6 +85,8 @@ export function useGemini() {
       })
 
       const json = await res.json()
+      console.log('Gemini API response status:', res.status)
+      console.log('Gemini API response body:', JSON.stringify(json, null, 2))
 
       if (!res.ok) {
         const msg = (json.error?.message || '').toLowerCase()
