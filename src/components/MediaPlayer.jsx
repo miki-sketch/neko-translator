@@ -18,6 +18,7 @@ export default function MediaPlayer({ mediaType, onReady, desc, onDescChange, on
 
   const mediaRef = useRef(null)
   const seekbarRef = useRef(null)
+  const rafRef = useRef(null)
   const audioCtxRef = useRef(null)
   const audioSourceRef = useRef(null)
   const captureStreamRef = useRef(null)
@@ -27,9 +28,7 @@ export default function MediaPlayer({ mediaType, onReady, desc, onDescChange, on
   const startMediaTimeRef = useRef(null)
   const inputRef = useRef(null)
 
-  // Update seekbar value and CSS fill variable directly (iOS fix)
   function syncSeekbar(time) {
-    console.log('timeupdate:', time)
     if (!seekbarRef.current) return
     seekbarRef.current.value = time
     const d = mediaRef.current?.duration || 0
@@ -38,22 +37,27 @@ export default function MediaPlayer({ mediaType, onReady, desc, onDescChange, on
     }
   }
 
-  // Register timeupdate via addEventListener for reliable iOS firing
-  useEffect(() => {
-    const media = mediaRef.current
-    if (!media) return
-    const onTimeUpdate = () => {
-      const t = media.currentTime
-      const d = media.duration
-      if (seekbarRef.current) {
-        seekbarRef.current.value = t
-        if (d > 0) seekbarRef.current.style.setProperty('--seek-value', `${(t / d) * 100}%`)
+  function startRAF() {
+    const loop = () => {
+      const media = mediaRef.current
+      if (media && !media.paused && media.duration) {
+        syncSeekbar(media.currentTime)
+        setCurrentTime(media.currentTime)
       }
-      setCurrentTime(t)
+      rafRef.current = requestAnimationFrame(loop)
     }
-    media.addEventListener('timeupdate', onTimeUpdate)
-    return () => media.removeEventListener('timeupdate', onTimeUpdate)
-  }, [mediaKey])
+    rafRef.current = requestAnimationFrame(loop)
+  }
+
+  function stopRAF() {
+    if (rafRef.current) {
+      cancelAnimationFrame(rafRef.current)
+      rafRef.current = null
+    }
+  }
+
+  // Stop rAF on unmount
+  useEffect(() => () => stopRAF(), [])
 
   useEffect(() => {
     if (resetSignal > 0) {
@@ -91,6 +95,7 @@ export default function MediaPlayer({ mediaType, onReady, desc, onDescChange, on
 
   function handleFile(f) {
     if (!f) return
+    stopRAF()
     cleanup()
     const url = URL.createObjectURL(f)
     setFile(f)
@@ -140,6 +145,8 @@ export default function MediaPlayer({ mediaType, onReady, desc, onDescChange, on
     startTimeRef.current = Date.now()
     startMediaTimeRef.current = media.currentTime
 
+    startRAF()
+
     setStatus('recording')
     setMessage('🐱 翻訳開始だにゃ〜！')
   }
@@ -148,6 +155,7 @@ export default function MediaPlayer({ mediaType, onReady, desc, onDescChange, on
     const media = mediaRef.current
     const endMediaTime = media?.currentTime ?? 0
     media?.pause()
+    stopRAF()
 
     const recorder = recorderRef.current
     if (!recorder || recorder.state === 'inactive') return
@@ -166,6 +174,7 @@ export default function MediaPlayer({ mediaType, onReady, desc, onDescChange, on
   function handleStop() {
     const media = mediaRef.current
     media?.pause()
+    stopRAF()
 
     const recorder = recorderRef.current
     if (recorder && recorder.state !== 'inactive') {
