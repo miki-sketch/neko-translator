@@ -355,10 +355,16 @@ body {
 .translate-stop-btn:not(:disabled):hover { border-color: #666; color: #333; }
 
 .seek-bar {
+  --seek-value: 0%;
   width: 100%;
   accent-color: #E07020;
   cursor: pointer;
   height: 4px;
+  background: linear-gradient(
+    to right,
+    #E07020 var(--seek-value),
+    #D0C4B8 var(--seek-value)
+  );
 }
 .seek-bar:disabled { cursor: not-allowed; opacity: 0.4; }
 

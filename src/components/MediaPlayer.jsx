@@ -17,6 +17,7 @@ export default function MediaPlayer({ mediaType, onReady, desc, onDescChange, on
   const [duration, setDuration] = useState(0)
 
   const mediaRef = useRef(null)
+  const seekbarRef = useRef(null)
   const audioCtxRef = useRef(null)
   const audioSourceRef = useRef(null)
   const captureStreamRef = useRef(null)
@@ -26,6 +27,33 @@ export default function MediaPlayer({ mediaType, onReady, desc, onDescChange, on
   const startMediaTimeRef = useRef(null)
   const inputRef = useRef(null)
 
+  // Update seekbar value and CSS fill variable directly (iOS fix)
+  function syncSeekbar(time) {
+    if (!seekbarRef.current) return
+    seekbarRef.current.value = time
+    const d = mediaRef.current?.duration || 0
+    if (d > 0) {
+      seekbarRef.current.style.setProperty('--seek-value', `${(time / d) * 100}%`)
+    }
+  }
+
+  // Register timeupdate via addEventListener for reliable iOS firing
+  useEffect(() => {
+    const media = mediaRef.current
+    if (!media) return
+    const onTimeUpdate = () => {
+      const t = media.currentTime
+      const d = media.duration
+      if (seekbarRef.current) {
+        seekbarRef.current.value = t
+        if (d > 0) seekbarRef.current.style.setProperty('--seek-value', `${(t / d) * 100}%`)
+      }
+      setCurrentTime(t)
+    }
+    media.addEventListener('timeupdate', onTimeUpdate)
+    return () => media.removeEventListener('timeupdate', onTimeUpdate)
+  }, [mediaKey])
+
   useEffect(() => {
     if (resetSignal > 0) {
       setStatus('idle')
@@ -33,6 +61,7 @@ export default function MediaPlayer({ mediaType, onReady, desc, onDescChange, on
       const t = startMediaTimeRef.current
       if (t != null && mediaRef.current) {
         mediaRef.current.currentTime = t
+        syncSeekbar(t)
         setCurrentTime(t)
       }
     }
@@ -48,8 +77,6 @@ export default function MediaPlayer({ mediaType, onReady, desc, onDescChange, on
     }
   }
 
-  // Creates a fresh AudioContext for the current media element.
-  // Call once per file (element is fresh due to mediaKey).
   function setupAudioContext() {
     const audioCtx = new AudioContext()
     const source = audioCtx.createMediaElementSource(mediaRef.current)
@@ -73,6 +100,10 @@ export default function MediaPlayer({ mediaType, onReady, desc, onDescChange, on
     setCurrentTime(0)
     setDuration(0)
     startMediaTimeRef.current = null
+    if (seekbarRef.current) {
+      seekbarRef.current.value = 0
+      seekbarRef.current.style.setProperty('--seek-value', '0%')
+    }
   }
 
   async function handleStart() {
@@ -146,6 +177,7 @@ export default function MediaPlayer({ mediaType, onReady, desc, onDescChange, on
 
     const resetTime = startMediaTimeRef.current ?? 0
     if (media) media.currentTime = resetTime
+    syncSeekbar(resetTime)
     setCurrentTime(resetTime)
 
     setStatus('idle')
@@ -155,6 +187,7 @@ export default function MediaPlayer({ mediaType, onReady, desc, onDescChange, on
   function handleSeek(e) {
     const t = Number(e.target.value)
     if (mediaRef.current) mediaRef.current.currentTime = t
+    syncSeekbar(t)
     setCurrentTime(t)
   }
 
@@ -169,7 +202,6 @@ export default function MediaPlayer({ mediaType, onReady, desc, onDescChange, on
   const seekDisabled = isRecording || isProcessing
 
   const mediaEvents = {
-    onTimeUpdate: () => { if (mediaRef.current) setCurrentTime(mediaRef.current.currentTime) },
     onLoadedMetadata: () => { if (mediaRef.current) setDuration(mediaRef.current.duration || 0) },
     onEnded: () => { if (isRecording) handleEnd() },
   }
@@ -208,10 +240,11 @@ export default function MediaPlayer({ mediaType, onReady, desc, onDescChange, on
 
           <input
             type="range"
+            ref={seekbarRef}
             min={0}
             max={duration || 0}
             step={0.1}
-            value={currentTime}
+            defaultValue={0}
             onChange={handleSeek}
             disabled={seekDisabled}
             className="seek-bar"
